@@ -1,0 +1,66 @@
+Kumar,
+
+1)	Hide all the script outputs to a file that we can review later if need, from your “EC2 create” process.
+2)	Add a logfile to your EC2 create for a new customer so we can see the output of the commands, checking for ORA error that we saw when the database failed to start
+3)	Create a new script using the “EC2 create” process, to loop through the file with all the customer server names and IPs that we have created ( you might need to create a couple customer EC2s, so you have something to test against.  
+a.	In the loop, for each existing customer, you will need to:
+i.	 shutdown the database:
+db XPPNP
+spdba
+shutdown immediate;
+exit
+ii.	Unmount the database ebs volume 
+iii.	Mount the new snapshot  -- From your ebs snapshot process
+iv.	Startup the database:
+db XPPNP
+spdba
+statup 
+Exit
+-----------------------------------------------------------------------------------------------------------------------------------------------
+4)	After the above has been completed and tested, then you will need to work with Matt and utilize his code to create a new process called “Uncompress”  (Jira Task CTE-342)
+a.	Logon to server 10.146.55.4 ( ask matt for assistance, you will need to use the ctestmt.pem to connect.
+b.	Using database XPMRTA, you will need to run the follow uncompress scripts in code, calling from a file like Matt currently does for his backup/restore/encrypt processes.
+on 10.146.55.4
+db XPMRTA
+cd /opt/oracle/data/uncompress/XPMRTA
+spdba
+set pages 1000 lines 200
+set head off
+set feedback off
+spool incr_maxsize_ts.sql
+@/opt/oracle/data/scripts/cr_incr_maxsize_ts.sql
+spool off
+spool incr_maxsize_ts.log
+@incr_maxsize_ts.sql
+spool off
+spool incr_maxsize_is.sql
+@/opt/oracle/data/scripts/cr_incr_maxsize_is.sql
+spool off
+spool incr_maxsize_is.log
+@incr_maxsize_is.sql
+spool off
+spool incr_maxsize_prtts.sql
+@/opt/oracle/data/scripts/cr_incr_maxsize_prtts.sql
+spool off
+spool incr_maxsize_prtts.log
+@incr_maxsize_prtts.sql
+spool off
+@/opt/oracle/data/scripts/cr_recompress.sql
+spool off
+spool run_recompress.log
+set timing on
+@recompress.sql
+Set timing off
+spool off
+spool rebuildindex.sql
+@/opt/oracle/data/scripts/cr_rebuildindex.sql
+spool off
+spool run_rebuildindex.log
+set timing on
+@rebuildindex.sql
+Set timing off
+spool off
+
+
+Let me know if you have any questions.
+
